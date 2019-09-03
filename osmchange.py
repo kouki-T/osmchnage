@@ -3,38 +3,44 @@ import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 import json
+import sqlite3
 
-url = "https://www.openstreetmap.org/api/0.6/changeset/71779142"
+conn = sqlite3.connect("testsample.db")
+cur = conn.cursor()
 
-req = urllib.request.Request(url)
+def changesetloop(setnumber):
+    url = "https://www.openstreetmap.org/api/0.6/changeset/" + str(setnumber)
+    urlnumber = url.strip("https://www.openstreetmap.org/api/0.6/changeset/")
 
-with urllib.request.urlopen(req) as response:
-    xml_string = response.read()
-root = ET.fromstring(xml_string)
+    req = urllib.request.Request(url)
 
-child = root[0]
+    with urllib.request.urlopen(req) as response:
+        xml_string = response.read()
+    root = ET.fromstring(xml_string)
 
-osm = str(child.attrib)
-osm2 = osm.split()
+    child = root[0]
 
-lat_p = osm2[17].strip("','")
-lon_p = osm2[19].strip("','")
+    osm = str(child.attrib)
+    osm2 = osm.split()
 
+    lat_p = osm2[17].strip("','")
+    lon_p = osm2[19].strip("','")
+    
+    if 123 <= float( lon_p) <=140:
+        item = (setnumber , lat_p , lon_p)
+        cur.execute("INSERT INTO geolatlon VALUES (? , ? , ?)" , item)
+        conn.commit()
+        return print('%s is compleated.' % setnumber)
+    else:
+        return print('%s is not Japan.' % setnumber)
+    
 
-def rgeocode(lat, lon, res_type):
-    req_url = 'http://www.finds.jp/ws/rgeocode.php?lat={0}&lon={1}'.format(lat,lon)
-    if res_type != None:
-        req_url += '&{0}'.format(res_type)
-        print(req_url)
+changesetloop(10000)
+changesetloop(40000)
+changesetloop(60000)
+changesetloop(70127314)
 
-        return requests.get(req_url)
-
-res = rgeocode(lat_p, lon_p, 'json').text
-
-jsonData = json.loads(res)['result']
-
-pname = jsonData['prefecture']['pname']
-mname = jsonData['municipality']['mname']
-section = jsonData['local'][0]['section']
-
-print("pname={0}, mname={1}, section={2}".format(pname, mname, section))
+cur.execute("SELECT * FROM geolatlon")
+x = cur.fetchall()
+print(x)
+conn.close()
